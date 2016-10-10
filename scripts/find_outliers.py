@@ -25,13 +25,7 @@ def find_outliers(data_directory):
     -------
     None
     """
-    # Your code here
 
-    ## MLN:  10-5-16
-
-    #make an empty string array that will ultimately store which volumes
-    #are outliers
-    outlierarr = []
 
     # Identify image files in data_directory using names listed in
     # 'hash_list.txt' (executed similarly to validate_data.py)
@@ -46,7 +40,6 @@ def find_outliers(data_directory):
     for line in open(hashlist, 'rt'):
         i = line.split()
         imgfile = str(data_directory + '/' + i[1]) #making this filename a string with full path
-        #print(imgfile) #testing to see through printing whether the data reads in
         # Load the image file
         img = nib.load(imgfile, mmap=False)
         # Retrieve data from image array
@@ -59,7 +52,6 @@ def find_outliers(data_directory):
         imgfiles[str(k)] = i[1]
         k+=1
 
-    #print(vol_means)
     # print(volumes[str(1)].shape)  #making sure this gives the shape of 1 run
     #plot with subplots the means for each volume for each run
     """fig, ax = plt.subplots(20,1)
@@ -70,7 +62,6 @@ def find_outliers(data_directory):
         print(len(vol_means[str(i)]))
     plt.show()"""
 
-
     """iqr_proportion = 1.5
     for line in vol_means:
         q1, q3 = np.percentile(vol_means[line], [25, 75])
@@ -79,14 +70,8 @@ def find_outliers(data_directory):
         down_thresh = q1 - iqr * iqr_proportion
         print(np.logical_or(vol_means[line] > up_thresh, vol_means[line] < down_thresh))"""
 
-
-
-
-
-
     #making a residuals dictionary that contains a more linear version
     # of the mean data. It gets rid of any drift in the data.
-
 
     """residuals = {}
     for i in range(len(vol_means)):
@@ -110,10 +95,10 @@ def find_outliers(data_directory):
         #plt.show()"""
 
 
-#adding a section to select values from ONLY outside of the brain
-#Did this by looking at the values from a bunch of the volumes for different runs,
-#and finding that almost all values inside of (volume_mean + 0.3*mean) were inside the brain
-#we can then run dvars on these values so we are not getting the variablity of voxels inside the brain
+    #adding a section to select values from ONLY outside of the brain
+    #Did this by looking at the values from a bunch of the volumes for different runs,
+    #and finding that almost all values inside of (volume_mean + 0.3*mean) were inside the brain
+    #we can then run dvars on these values so we are not getting the variablity of voxels inside the brain
     volumes_outside_brain = {}
 
     for i in range(len(volumes)):
@@ -132,8 +117,7 @@ def find_outliers(data_directory):
         volumes_outside_brain[str(i)] = outside_brain
         print('Run ' + str(i) + ':' + str(volumes_outside_brain[str(i)].shape))
 
-
-#calculating the Dvars of the volumes for the area outside of the brain
+    #calculating the Dvars of the volumes for the area outside of the brain
     dvars_outside_brain = {}
 
     for i in range(len(volumes_outside_brain)):
@@ -151,42 +135,34 @@ def find_outliers(data_directory):
         dvars_outside_brain[str(i)] = dvarsFirst
         print('dvars ' + str(i) + ':' + str(len(dvars_outside_brain[str(i)])))
 
-#initially selecting and printing outliers from dvars that are 3 s.d. or more away from mean
+#Select and print outliers from dvars that are 2.5 s.d. or more away from mean
     outliers = {}
     for i in range(len(dvars_outside_brain)):
         num_vols = len(dvars_outside_brain[str(i)])
         dvars_list = dvars_outside_brain[str(i)]
         vol_outliers = []
         for k in range(num_vols):
-            if dvars_list[k] > (np.mean(dvars_list) + 3*np.std(dvars_list)):
+            if dvars_list[k] > (np.mean(dvars_list) + 2.5*np.std(dvars_list)):
                 vol_outliers.append(k)
-            elif dvars_list[k] < (np.mean(dvars_list) - 3*np.std(dvars_list)):
+            elif dvars_list[k] < (np.mean(dvars_list) - 2.5*np.std(dvars_list)):
                 vol_outliers.append(k)
         outliers[str(i)] = vol_outliers
 
+#MLN 10-9-16: the following commented code attempted to make detection more specific,
+# since it is already quite sensitive, but failed to use the right parameters for
+# criteria, so it does not ultimately improve final list of outliers
+        #dvars_array = np.array(dvars_list)
+        #returns = dvars_array[1:num_vols]/dvars_array[0:(num_vols - 1)] - 1.0
+        #np.insert(returns, 0, 0.0)
+        #(returns_outliers,) = np.where(np.abs(returns) >= 0.25)
+        #outlier_inds = np.intersect1d(vol_outliers, returns_outliers)
+        #outliers[str(i)] = outlier_inds
+
+# Print each file name and then list each of the volumes that were determined
+# to be outliers
     for i in range(len(outliers)):
         print(str(imgfiles[str(i)]) + ' outliers:' + str(outliers[str(i)]))
-
-
-
-    # this function calculates the Dvars of the volumes
-    #dvars = {}
-
-    #for i in range(len(volumes)):
-        #nvoxels = volumes[str(i)].shape[0] * volumes[str(i)].shape[1] * volumes[str(i)].shape[2]
-        #num_vols = volumes[str(i)].shape[-1]
-        #dvarsFirst = []
-        #for elm in range(num_vols - 1):
-        #    data = volumes[str(i)]
-        #    diffs = data[:,:,:,elm] - data[:,:,:,elm + 1]
-        #    diffs = diffs**2 # Square the differences;
-        #    sumdiffs = sum(diffs.ravel()) # Sum over voxels for each volumevoxels;
-        #    avgdiffs = sumdiffs/nvoxels #divide by number of voxels
-        #    sqdiffs = np.sqrt(avgdiffs) # Return the square root of these values.
-        #    dvarsFirst.append(sqdiffs)
-        #dvars[str(i)] = dvarsFirst
-        #print(dvars[str(i)])
-
+    # Plot
     fig, ax = plt.subplots(20,1)
     for i, ax in enumerate(ax):
         dvars_run = dvars_outside_brain[str(i)]
@@ -198,23 +174,6 @@ def find_outliers(data_directory):
         ax.set_ylabel('Run ' + str(i))
         ax.set_xlim(0,162)
     plt.show()
-
-
-            #return dvars
-        # Now here is where we do some dummy outlier code
-        #for volume in data(:,:,:,volumeidx)
-            # Do something mathematical to this volume
-            # such as find its mean amount and then
-            # put that value in an array for later comparison
-            # with the next future volumes
-            #volmath = [avgVal_vol1 avgVal_vol2 etc]
-
-        # if volume > criterion_for_being_outlier
-        #outlierarr[volume] = str[imgfile + '_' + volume]
-            #print(outlierarr)
-            #prints all vols that are outliers for this nifty file, then
-            #advances to the next nift file  named on the next line of
-            #"hast_list" '''
 
     raise RuntimeError('No code yet')
 
